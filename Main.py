@@ -8,7 +8,7 @@ import numpy as np
 # ---------------------------------------------------------
 # 1. CONFIGURAÇÃO UI/UX E LOGIN
 # ---------------------------------------------------------
-st.set_page_config(page_title="Megalink - BI Operacional", layout="wide")
+st.set_page_config(page_title="Relatório de equipamentos - Backbone", layout="wide")
 
 def verificar_senha():
     def senha_inserida():
@@ -19,7 +19,7 @@ def verificar_senha():
             st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state:
-        st.markdown("<h1 style='text-align: center; color: #00d1ff; font-family: Orbitron;'>ACESSO RESTRITO</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align: center; color: #00d1ff; font-family: Inter;'>ACESSO RESTRITO</h1>", unsafe_allow_html=True)
         st.text_input("Digite a senha de acesso", type="password", on_change=senha_inserida, key="password")
         return False
     elif not st.session_state["password_correct"]:
@@ -31,14 +31,24 @@ def verificar_senha():
 def aplicar_design_premium():
     st.markdown("""
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
         .block-container { padding-top: 1.5rem !important; }
-        .stApp { background: radial-gradient(circle at top right, #0d1117, #010409); color: #e6edf3; font-family: 'Inter', sans-serif; }
-        .neon-title { font-family: 'Orbitron', sans-serif; color: #00d1ff; text-shadow: 0 0 15px rgba(0, 209, 255, 0.6); font-size: 1.8rem; margin-bottom: 20px; }
+        
+        /* Fonte Inter aplicada em todo o site */
+        html, body, [class*="css"], .stMarkdown, p, h1, h2, h3, h4, h5, h6 {
+            font-family: 'Inter', sans-serif !important;
+        }
+
+        .stApp { background: radial-gradient(circle at top right, #0d1117, #010409); color: #e6edf3; }
+        
+        /* Título sem efeito neon/brilho */
+        .neon-title { color: #00d1ff; font-size: 1.8rem; margin-bottom: 20px; font-weight: 700; }
+        
         .glass-card { background: rgba(22, 27, 34, 0.7); backdrop-filter: blur(10px); border-radius: 15px; padding: 20px; border: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 20px; }
         .metric-card { background: rgba(0, 209, 255, 0.05); border: 1px solid rgba(0, 209, 255, 0.3); border-radius: 12px; padding: 20px; text-align: center; }
-        .stButton>button { width: 100%; border-radius: 10px; background-color: rgba(0, 209, 255, 0.1); color: #00d1ff; border: 1px solid #00d1ff; transition: 0.3s; }
-        .stButton>button:hover { background-color: #00d1ff; color: #000; box-shadow: 0 0 20px rgba(0, 209, 255, 0.4); }
+        
+        .stButton>button { width: 100%; border-radius: 10px; background-color: rgba(0, 209, 255, 0.1); color: #00d1ff; border: 1px solid #00d1ff; transition: 0.3s; font-family: 'Inter', sans-serif; }
+        .stButton>button:hover { background-color: #00d1ff; color: #000; box-shadow: none; } /* Removido box-shadow neon */
     </style>
     """, unsafe_allow_html=True)
 
@@ -85,7 +95,6 @@ def renderizar_relatorio_geral(df_base, colunas_reais):
     df_global['Status'] = df_global['Status'].fillna('Preservado')
     df_global['Conforme'] = df_global['Status'].apply(lambda x: 1 if str(x).lower() == 'preservado' else 0)
 
-    # KPIs Exigidos
     m1, m2, m3 = st.columns(3)
     with m1:
         st.markdown(f"<div class='metric-card'><h5>Índice de Preservação Global</h5><h2 style='color:#00FF7F;'>{int(df_global['Conforme'].mean()*100)}%</h2></div>", unsafe_allow_html=True)
@@ -105,13 +114,14 @@ def renderizar_relatorio_geral(df_base, colunas_reais):
         df_cat['Situação'] = df_cat['Conforme'].map({1: 'OK', 0: 'Avaria'})
         fig = px.bar(df_cat, x='Categoria', y='Qtd', color='Situação', barmode='group',
                      color_discrete_map={'OK':'#00FF7F','Avaria':'#FF3131'}, template="plotly_dark", title="PANORAMA POR CATEGORIA")
+        fig.update_layout(font_family="Inter")
         st.plotly_chart(fig, use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
     with c2:
         st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
         df_rad = df_global.groupby('SUPERVISOR')['Conforme'].mean().reset_index()
         fig_r = go.Figure(go.Scatterpolar(r=df_rad['Conforme']*100, theta=df_rad['SUPERVISOR'], fill='toself', line=dict(color='#00d1ff')))
-        fig_r.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])), template="plotly_dark", title="SCORE GERAL DE LIDERANÇA")
+        fig_r.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])), template="plotly_dark", title="SCORE GERAL DE LIDERANÇA", font_family="Inter")
         st.plotly_chart(fig_r, use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -128,11 +138,10 @@ if verificar_senha():
             st.cache_data.clear()
             st.toast("Dados atualizados!", icon="✅")
             st.rerun()
-        st.info("Senha de acesso: megalink2024")
 
     df_base, colunas_reais = carregar_dados_mestre()
 
-    st.markdown("<h1 class='neon-title'>MEGALINK BI OPERACIONAL</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 class='neon-title'>Relatório de equipamentos - Backbone</h1>", unsafe_allow_html=True)
     abas = st.tabs(["📊 Relatório Geral", "👕 Fardamento", "🛠️ Equipamentos", "🔧 Ferramentas", "🛡️ EPI"])
     
     with abas[0]:
@@ -151,7 +160,6 @@ if verificar_senha():
             df_s = df_base[(df_base['CÓDIGO'].astype(float) >= ini) & (df_base['CÓDIGO'].astype(float) <= ini+999)]
             nomes_itens = obter_nomes_itens(ini, colunas_reais)
             
-            # Filtros Superior
             f1, f2 = st.columns(2)
             with f1: f_col = st.selectbox(f"Colaborador ({mod['nome']})", ["Todos"] + sorted(df_s['COLABORADOR'].dropna().unique().tolist()), key=f"c_{ini}")
             with f2: f_sup = st.selectbox(f"Supervisor ({mod['nome']})", ["Todos"] + sorted(df_s['SUPERVISOR'].dropna().unique().tolist()), key=f"s_{ini}")
@@ -160,7 +168,6 @@ if verificar_senha():
             if f_col != "Todos": df_f = df_f[df_f['COLABORADOR'] == f_col]
             if f_sup != "Todos": df_f = df_f[df_f['SUPERVISOR'] == f_sup]
 
-            # GRAFICOS ORIGINAIS RESTAURADOS
             df_long = df_f.melt(id_vars=['DATA', 'COLABORADOR', 'SUPERVISOR'], value_vars=nomes_itens, var_name='Item', value_name='Obs').fillna('Preservado')
             df_long['Conforme'] = df_long['Obs'].apply(lambda x: 1 if str(x).lower() == 'preservado' else 0)
 
@@ -170,6 +177,7 @@ if verificar_senha():
                 fig_bar = px.bar(df_long.groupby(['Item', 'Conforme']).size().reset_index(name='Qtd'), 
                                 x='Item', y='Qtd', color=df_long.groupby(['Item', 'Conforme']).size().reset_index(name='Qtd')['Conforme'].map({1:'OK', 0:'Avaria'}),
                                 title=f"Estado de Prontidão: {mod['nome']}", color_discrete_map={'OK': '#00FF7F', 'Avaria': '#FF3131'}, template="plotly_dark")
+                fig_bar.update_layout(font_family="Inter")
                 st.plotly_chart(fig_bar, use_container_width=True)
                 st.markdown("</div>", unsafe_allow_html=True)
             
@@ -177,14 +185,13 @@ if verificar_senha():
                 st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
                 df_rad_a = df_long.groupby('SUPERVISOR')['Conforme'].mean().reset_index()
                 fig_rad_a = go.Figure(go.Scatterpolar(r=df_rad_a['Conforme']*100, theta=df_rad_a['SUPERVISOR'], fill='toself', line=dict(color='#00d1ff')))
-                fig_rad_a.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])), template="plotly_dark", title=f"Score de Cuidado: {mod['nome']}")
+                fig_rad_a.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])), template="plotly_dark", title=f"Score de Cuidado: {mod['nome']}", font_family="Inter")
                 st.plotly_chart(fig_rad_a, use_container_width=True)
                 st.markdown("</div>", unsafe_allow_html=True)
 
-            # TABELAS RESTAURADAS
             st.markdown(f"### 🚨 Itens para Reposição: {mod['nome']}")
-            df_rep = df_long[df_long['Conforme'] == 0]
-            st.dataframe(df_rep[['DATA', 'COLABORADOR', 'SUPERVISOR', 'Item', 'Obs']], use_container_width=True, hide_index=True)
+            st.dataframe(df_long[df_long['Conforme'] == 0][['DATA', 'COLABORADOR', 'SUPERVISOR', 'Item', 'Obs']], use_container_width=True, hide_index=True)
             
             st.markdown(f"### 📋 Histórico Detalhado: {mod['nome']}")
             st.dataframe(df_f[['DATA', 'COLABORADOR', 'SUPERVISOR'] + nomes_itens].fillna("Preservado"), use_container_width=True, hide_index=True)
+
