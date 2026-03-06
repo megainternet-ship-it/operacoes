@@ -1,197 +1,843 @@
-import streamlit as st
+import streamlit as st 
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 from datetime import datetime
-import numpy as np
 
-# ---------------------------------------------------------
-# 1. CONFIGURAÇÃO UI/UX E LOGIN
-# ---------------------------------------------------------
-st.set_page_config(page_title="Relatório de equipamentos - Backbone", layout="wide")
+st.set_page_config(page_title="Operacional Backbone", layout="wide")
 
-def verificar_senha():
-    def senha_inserida():
-        if st.session_state["password"] == "megalink2024":
-            st.session_state["password_correct"] = True
-            del st.session_state["password"]
-        else:
-            st.session_state["password_correct"] = False
+# ================================
+# CORREÇÃO VISUAL E ESTILO LOGIN (CSS CUSTOMIZADO)
+# ================================
+st.markdown("""
+<style>
+/* Reset e Variáveis do seu CSS */
+:root {
+  --primary: #00D9FF;
+  --primary-foreground: #0A0E27;
+  --background: #0A0E27;
+  --foreground: #E0F7FF;
+  --card: #0F1535;
+  --card-foreground: #E0F7FF;
+  --radius: 0.5rem;
+  --border: #003D66;
+}
 
-    if "password_correct" not in st.session_state:
-        st.markdown("<h1 style='text-align: center; color: #00d1ff; font-family: Inter;'>ACESSO RESTRITO</h1>", unsafe_allow_html=True)
-        st.text_input("Digite a senha de acesso", type="password", on_change=senha_inserida, key="password")
-        return False
-    elif not st.session_state["password_correct"]:
-        st.text_input("Senha incorreta. Tente novamente", type="password", on_change=senha_inserida, key="password")
-        st.error("😕 Acesso negado.")
-        return False
-    return True
+/* Esconder Header Padrão */
+header {visibility: hidden;}
+[data-testid="stHeader"] {visibility: hidden;}
+[data-testid="stToolbar"] {right: 2rem;}
 
-def aplicar_design_premium():
-    st.markdown("""
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-        .block-container { padding-top: 1.5rem !important; }
-        
-        /* Fonte Inter aplicada em todo o site */
-        html, body, [class*="css"], .stMarkdown, p, h1, h2, h3, h4, h5, h6 {
-            font-family: 'Inter', sans-serif !important;
-        }
+/* Animações e Efeitos do Login */
+@keyframes scan-lines {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
 
-        .stApp { background: radial-gradient(circle at top right, #0d1117, #010409); color: #e6edf3; }
-        
-        /* Título sem efeito neon/brilho */
-        .neon-title { color: #00d1ff; font-size: 1.8rem; margin-bottom: 20px; font-weight: 700; }
-        
-        .glass-card { background: rgba(22, 27, 34, 0.7); backdrop-filter: blur(10px); border-radius: 15px; padding: 20px; border: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 20px; }
-        .metric-card { background: rgba(0, 209, 255, 0.05); border: 1px solid rgba(0, 209, 255, 0.3); border-radius: 12px; padding: 20px; text-align: center; }
-        
-        .stButton>button { width: 100%; border-radius: 10px; background-color: rgba(0, 209, 255, 0.1); color: #00d1ff; border: 1px solid #00d1ff; transition: 0.3s; font-family: 'Inter', sans-serif; }
-        .stButton>button:hover { background-color: #00d1ff; color: #000; box-shadow: none; } /* Removido box-shadow neon */
-    </style>
-    """, unsafe_allow_html=True)
+.stForm {
+    background-color: var(--card) !important;
+    border: 2px solid var(--primary) !important;
+    border-radius: var(--radius) !important;
+    padding: 2rem !important;
+    box-shadow: 0 0 15px rgba(0, 217, 255, 0.2) !important;
+}
 
-# ---------------------------------------------------------
-# 2. CARREGAMENTO DE DADOS
-# ---------------------------------------------------------
-@st.cache_data(ttl=600)
-def carregar_dados_mestre():
-    url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRRhakH8eejohlExEaPwdEc3juvNyv7oK21XS8jLoPqRxFfgHJjERxG-SkE2Ugy5B95677gh7nj0Wet/pub?gid=1830501183&single=true&output=csv"
-    df = pd.read_csv(url)
-    cols = df.columns.tolist()
-    df = df.rename(columns={cols[0]: 'CÓDIGO', cols[1]: 'DATA', cols[2]: 'COLABORADOR', cols[3]: 'CARGO', cols[4]: 'SUPERVISOR'})
-    df['DATA'] = pd.to_datetime(df['DATA'], dayfirst=True, errors='coerce')
-    df = df.replace(r'^\s*$', np.nan, regex=True).replace('None', np.nan)
-    return df, cols
+.glow-title {
+    color: #FFFFFF !important;
+    text-align: center;
+    font-family: 'Poppins', sans-serif;
+    text-shadow: none !important;
+    font-weight: 700;
+}
 
-def obter_nomes_itens(cod_ini, colunas_reais):
-    if cod_ini == 1: return [colunas_reais[50]]
-    elif cod_ini == 1001: return colunas_reais[6:19]
-    elif cod_ini == 2001: return colunas_reais[19:40]
-    elif cod_ini == 3001: return colunas_reais[40:50]
-    return []
+/* Efeito de scan no fundo da tela de login */
+.login-bg {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: repeating-linear-gradient(0deg, rgba(0, 217, 255, 0.03) 0px, transparent 1px, transparent 2px);
+    pointer-events: none;
+    animation: scan-lines 10s linear infinite;
+    z-index: 0;
+}
+</style>
+""", unsafe_allow_html=True)
 
-# ---------------------------------------------------------
-# 3. ABA: RELATÓRIO GERAL (CONSOLIDADO)
-# ---------------------------------------------------------
-def renderizar_relatorio_geral(df_base, colunas_reais):
-    st.markdown("<h2 class='neon-title'>RELATÓRIO GERAL DE OPERAÇÕES</h2>", unsafe_allow_html=True)
+
+# =========================================================
+# CACHE DE LEITURA DAS PLANILHAS (CORRIGIDO)
+# =========================================================
+
+@st.cache_data(ttl=300)
+def carregar_csv(url):
+    try:
+        # Adicionado tratamento para links do Google Sheets que podem vir com erros de linha
+        return pd.read_csv(url, on_bad_lines='skip', low_memory=False)
+    except Exception as e:
+        st.error(f"Erro ao conectar com a base de dados: {e}")
+        return pd.DataFrame()
+
+
+# =========================================================
+# 1. ACESSO E CONFIGURAÇÃO
+# =========================================================
+if "autenticado" not in st.session_state:
+    st.session_state["autenticado"] = False
+
+
+def tela_login():
+    st.markdown('<div class="login-bg"></div>', unsafe_allow_html=True)
     
-    categorias = {
-        "Fardamento": obter_nomes_itens(1, colunas_reais),
-        "Equipamentos": obter_nomes_itens(1001, colunas_reais),
-        "Ferramentas": obter_nomes_itens(2001, colunas_reais),
-        "EPI": obter_nomes_itens(3001, colunas_reais)
-    }
-    
-    all_rows = []
-    for cat, itens in categorias.items():
-        temp_df = df_base.melt(id_vars=['DATA', 'SUPERVISOR', 'COLABORADOR'], value_vars=itens, var_name='Item', value_name='Status')
-        temp_df['Categoria'] = cat
-        all_rows.append(temp_df)
-    
-    df_global = pd.concat(all_rows)
-    df_global['Status'] = df_global['Status'].fillna('Preservado')
-    df_global['Conforme'] = df_global['Status'].apply(lambda x: 1 if str(x).lower() == 'preservado' else 0)
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        st.markdown('<h1 class="glow-title">🔒 OPERACIONAL BACKBONE</h1>', unsafe_allow_html=True)
+        st.write("") 
 
-    m1, m2, m3 = st.columns(3)
-    with m1:
-        st.markdown(f"<div class='metric-card'><h5>Índice de Preservação Global</h5><h2 style='color:#00FF7F;'>{int(df_global['Conforme'].mean()*100)}%</h2></div>", unsafe_allow_html=True)
-    with m2:
-        total_avarias = len(df_global[df_global['Conforme'] == 0])
-        st.markdown(f"<div class='metric-card'><h5>Avarias Totais</h5><h2 style='color:#FF3131;'>{total_avarias}</h2></div>", unsafe_allow_html=True)
-    with m3:
-        melhor_sup = df_global.groupby('SUPERVISOR')['Conforme'].mean().idxmax()
-        st.markdown(f"<div class='metric-card'><h5>Líder em Conservação</h5><h2 style='color:#00d1ff;'>{melhor_sup}</h2></div>", unsafe_allow_html=True)
+        with st.form("login_form"):
+            st.markdown('<p style="color:#00D9FF; text-align:center;">SISTEMA DE GESTÃO OPERACIONAL</p>', unsafe_allow_html=True)
+            senha = st.text_input("Credencial de Acesso", type="password")
+            submit = st.form_submit_button("DESBLOQUEAR ACESSO")
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    c1, c2 = st.columns([6, 4])
-    with c1:
-        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-        df_cat = df_global.groupby(['Categoria', 'Conforme']).size().reset_index(name='Qtd')
-        df_cat['Situação'] = df_cat['Conforme'].map({1: 'OK', 0: 'Avaria'})
-        fig = px.bar(df_cat, x='Categoria', y='Qtd', color='Situação', barmode='group',
-                     color_discrete_map={'OK':'#00FF7F','Avaria':'#FF3131'}, template="plotly_dark", title="PANORAMA POR CATEGORIA")
-        fig.update_layout(font_family="Inter")
-        st.plotly_chart(fig, use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-    with c2:
-        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-        df_rad = df_global.groupby('SUPERVISOR')['Conforme'].mean().reset_index()
-        fig_r = go.Figure(go.Scatterpolar(r=df_rad['Conforme']*100, theta=df_rad['SUPERVISOR'], fill='toself', line=dict(color='#00d1ff')))
-        fig_r.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])), template="plotly_dark", title="SCORE GERAL DE LIDERANÇA", font_family="Inter")
-        st.plotly_chart(fig_r, use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+            if submit:
+                if senha == "megalink2024":
+                    st.session_state["autenticado"] = True
+                    st.rerun()
+                else:
+                    st.error("Acesso Negado: Credencial Inválida")
 
-# ---------------------------------------------------------
-# 4. EXECUÇÃO PRINCIPAL
-# ---------------------------------------------------------
-if verificar_senha():
-    aplicar_design_premium()
-    
-    with st.sidebar:
-        st.image("https://logodownload.org/wp-content/uploads/2020/02/megalink-logo.png", width=150)
-        st.markdown("---")
-        if st.button("🔄 ATUALIZAR DADOS"):
-            st.cache_data.clear()
-            st.toast("Dados atualizados!", icon="✅")
-            st.rerun()
 
-    df_base, colunas_reais = carregar_dados_mestre()
+if not st.session_state["autenticado"]:
+    tela_login()
+    st.stop()
 
-    st.markdown("<h1 class='neon-title'>Relatório de equipamentos - Backbone</h1>", unsafe_allow_html=True)
-    abas = st.tabs(["📊 Relatório Geral", "👕 Fardamento", "🛠️ Equipamentos", "🔧 Ferramentas", "🛡️ EPI"])
-    
-    with abas[0]:
-        renderizar_relatorio_geral(df_base, colunas_reais)
 
-    modulos = [
-        {"nome": "Fardamento", "ini": 1, "aba": abas[1]},
-        {"nome": "Equipamentos", "ini": 1001, "aba": abas[2]},
-        {"nome": "Ferramentas", "ini": 2001, "aba": abas[3]},
-        {"nome": "EPI", "ini": 3001, "aba": abas[4]}
+# =========================================================
+# 2. BASES DE DADOS
+# =========================================================
+
+URL_EPI = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRRhakH8eejohlExEaPwdEc3juvNyv7oK21XS8jLoPqRxFfgHJjERxG-SkE2Ugy5B95677gh7nj0Wet/pub?gid=304420373&single=true&output=csv"
+URL_EQUIP = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRRhakH8eejohlExEaPwdEc3juvNyv7oK21XS8jLoPqRxFfgHJjERxG-SkE2Ugy5B95677gh7nj0Wet/pub?gid=932732884&single=true&output=csv"
+URL_FERRA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRRhakH8eejohlExEaPwdEc3juvNyv7oK21XS8jLoPqRxFfgHJjERxG-SkE2Ugy5B95677gh7nj0Wet/pub?gid=907191989&single=true&output=csv"
+URL_FARD = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRRhakH8eejohlExEaPwdEc3juvNyv7oK21XS8jLoPqRxFfgHJjERxG-SkE2Ugy5B95677gh7nj0Wet/pub?gid=353539867&single=true&output=csv"
+URL_BH = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRi_C2tHaGB4drG1O5MwtH6bCeK5Wc9l6dUn9XYTtn_1ikNSHrzXhfCar1wH31oOA/pub?gid=1475829475&single=true&output=csv"
+
+
+# =========================================================
+# 3. FUNÇÕES
+# =========================================================
+
+def limpar_media(df):
+
+    termos = [
+        'FOTO','MIDIA','MÍDIA','ANEXO',
+        'URL','LINK','IMAGEM',
+        'CIENTE','DECLARAÇÃO','ASSINATURA'
     ]
 
-    for mod in modulos:
-        with mod["aba"]:
-            ini = mod["ini"]
-            df_s = df_base[(df_base['CÓDIGO'].astype(float) >= ini) & (df_base['CÓDIGO'].astype(float) <= ini+999)]
-            nomes_itens = obter_nomes_itens(ini, colunas_reais)
-            
-            f1, f2 = st.columns(2)
-            with f1: f_col = st.selectbox(f"Colaborador ({mod['nome']})", ["Todos"] + sorted(df_s['COLABORADOR'].dropna().unique().tolist()), key=f"c_{ini}")
-            with f2: f_sup = st.selectbox(f"Supervisor ({mod['nome']})", ["Todos"] + sorted(df_s['SUPERVISOR'].dropna().unique().tolist()), key=f"s_{ini}")
-            
-            df_f = df_s.copy()
-            if f_col != "Todos": df_f = df_f[df_f['COLABORADOR'] == f_col]
-            if f_sup != "Todos": df_f = df_f[df_f['SUPERVISOR'] == f_sup]
+    cols_drop = [
+        c for c in df.columns
+        if any(t in str(c).upper() for t in termos)
+        or df[c].astype(str).str.contains('http', na=False).any()
+    ]
 
-            df_long = df_f.melt(id_vars=['DATA', 'COLABORADOR', 'SUPERVISOR'], value_vars=nomes_itens, var_name='Item', value_name='Obs').fillna('Preservado')
-            df_long['Conforme'] = df_long['Obs'].apply(lambda x: 1 if str(x).lower() == 'preservado' else 0)
+    return df.drop(columns=cols_drop)
 
-            c_graf1, c_graf2 = st.columns([6, 4])
-            with c_graf1:
-                st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-                fig_bar = px.bar(df_long.groupby(['Item', 'Conforme']).size().reset_index(name='Qtd'), 
-                                x='Item', y='Qtd', color=df_long.groupby(['Item', 'Conforme']).size().reset_index(name='Qtd')['Conforme'].map({1:'OK', 0:'Avaria'}),
-                                title=f"Estado de Prontidão: {mod['nome']}", color_discrete_map={'OK': '#00FF7F', 'Avaria': '#FF3131'}, template="plotly_dark")
-                fig_bar.update_layout(font_family="Inter")
-                st.plotly_chart(fig_bar, use_container_width=True)
-                st.markdown("</div>", unsafe_allow_html=True)
-            
-            with c_graf2:
-                st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-                df_rad_a = df_long.groupby('SUPERVISOR')['Conforme'].mean().reset_index()
-                fig_rad_a = go.Figure(go.Scatterpolar(r=df_rad_a['Conforme']*100, theta=df_rad_a['SUPERVISOR'], fill='toself', line=dict(color='#00d1ff')))
-                fig_rad_a.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])), template="plotly_dark", title=f"Score de Cuidado: {mod['nome']}", font_family="Inter")
-                st.plotly_chart(fig_rad_a, use_container_width=True)
-                st.markdown("</div>", unsafe_allow_html=True)
 
-            st.markdown(f"### 🚨 Itens para Reposição: {mod['nome']}")
-            st.dataframe(df_long[df_long['Conforme'] == 0][['DATA', 'COLABORADOR', 'SUPERVISOR', 'Item', 'Obs']], use_container_width=True, hide_index=True)
-            
-            st.markdown(f"### 📋 Histórico Detalhado: {mod['nome']}")
-            st.dataframe(df_f[['DATA', 'COLABORADOR', 'SUPERVISOR'] + nomes_itens].fillna("Preservado"), use_container_width=True, hide_index=True)
+def padronizar_status(df, colunas):
+
+    for col in colunas:
+
+        df[col] = df[col].astype(str).str.strip().str.lower()
+
+        df[col] = df[col].replace(
+            ['nan','null','0','0.0','preservado','preservada'],
+            'PRESERVADO'
+        )
+
+        df[col] = df[col].str.upper()
+
+    return df
+
+
+def gerenciar_filtros(df, key_suffix):
+
+    col_data = df.columns[0]
+
+    df[col_data] = pd.to_datetime(df[col_data], dayfirst=True, errors='coerce')
+
+    df = df.dropna(subset=[col_data])
+
+    df['Mes_Ano_Ref'] = df[col_data].dt.strftime('%m/%Y')
+
+    meses_disponiveis = sorted(df['Mes_Ano_Ref'].unique(), reverse=True)
+
+    c1, c2 = st.columns([3,1])
+
+    with c2:
+        btn_limpar = st.button("🧹 Limpar filtro", key=f"btn_limpar_{key_suffix}")
+
+    if btn_limpar:
+        st.session_state[f"sel_{key_suffix}"] = "Todos"
+        st.rerun()
+
+    with c1:
+        mes_sel = st.selectbox(
+            "Filtrar por Mês",
+            ["Todos"] + meses_disponiveis,
+            key=f"sel_{key_suffix}"
+        )
+
+    if mes_sel != "Todos":
+        df = df[df['Mes_Ano_Ref'] == mes_sel]
+
+    return df.drop(columns=['Mes_Ano_Ref'])
+
+
+# =========================================================
+# 4. TÍTULO
+# =========================================================
+
+st.markdown(
+    "<h1 style='color:#FFFFFF;'>Operacional Backbone</h1>",
+    unsafe_allow_html=True
+)
+
+
+abas = st.tabs(
+[
+"🛡️ EPI",
+"🛠️ EQUIPAMENTOS",
+"🔧 FERRAMENTAS",
+"👕 FARDAMENTO",
+"📦 REPOSIÇÃO",
+"📊 INTELIGÊNCIA OPERACIONAL",
+"⏳ BANCO DE HORAS"
+]
+)
+
+
+# =========================================================
+# GUIA 01 — EPI
+# =========================================================
+
+with abas[0]:
+
+    df_epi = carregar_csv(URL_EPI).iloc[:,1:]
+    df_epi = limpar_media(df_epi)
+
+    df_epi = gerenciar_filtros(df_epi,"epi")
+
+    cols_itens_epi = [c for c in df_epi.columns[5:]]
+
+    df_epi = padronizar_status(df_epi,cols_itens_epi)
+
+    f1,f2 = st.columns(2)
+
+    c_epi = f1.multiselect(
+        "Colaborador",
+        sorted(df_epi.iloc[:,1].unique()),
+        key="f_epi_colab_aba0"
+    )
+
+    s_epi = f2.multiselect(
+        "Supervisor",
+        sorted(df_epi.iloc[:,3].fillna("N/I").unique()),
+        key="f_epi_super_aba0"
+    )
+
+    df_f_epi = df_epi.copy()
+
+    if c_epi:
+        df_f_epi = df_f_epi[df_f_epi.iloc[:,1].isin(c_epi)]
+
+    if s_epi:
+        df_f_epi = df_f_epi[df_f_epi.iloc[:,3].isin(s_epi)]
+
+    cg1,cg2 = st.columns(2)
+
+    with cg1:
+
+        df_chart = df_f_epi.melt(
+            value_vars=cols_itens_epi
+        )['value'].value_counts().reset_index()
+
+        df_chart.columns = ['Status','Quantidade']
+
+        st.plotly_chart(
+            px.bar(
+                df_chart,
+                x='Status',
+                y='Quantidade',
+                title="Panorama Geral EPI",
+                template="plotly_dark",
+                color='Status'
+            ),
+            use_container_width=True
+        )
+
+    with cg2:
+
+        df_perf = df_f_epi.melt(
+            id_vars=[df_f_epi.columns[3]],
+            value_vars=cols_itens_epi,
+            value_name='Status'
+        )
+
+        df_perf = df_perf[df_perf['Status']=='PRESERVADO']
+
+        df_perf = df_perf.groupby(
+            df_f_epi.columns[3]
+        ).size().reset_index(name='Qtd OK')
+
+        st.plotly_chart(
+            px.pie(
+                df_perf,
+                names=df_perf.columns[0],
+                values='Qtd OK',
+                title="Performance Supervisor",
+                hole=0.4,
+                template="plotly_dark"
+            ),
+            use_container_width=True
+        )
+
+    st.dataframe(df_f_epi,use_container_width=True)
+
+
+# =========================================================
+# GUIA 02 — EQUIPAMENTOS
+# =========================================================
+
+with abas[1]:
+
+    df_equip = carregar_csv(URL_EQUIP).iloc[:,1:]
+    df_equip = limpar_media(df_equip)
+
+    df_equip = gerenciar_filtros(df_equip,"eq")
+
+    cols_itens_eq = [c for c in df_equip.columns[6:]]
+
+    df_equip = padronizar_status(df_equip,cols_itens_eq)
+
+    f1,f2 = st.columns(2)
+
+    sel_c_eq = f1.multiselect(
+        "Colaborador",
+        sorted(df_equip.iloc[:,1].unique()),
+        key="c_eq_aba1"
+    )
+
+    sel_s_eq = f2.multiselect(
+        "Supervisor",
+        sorted(df_equip.iloc[:,4].unique()),
+        key="s_eq_aba1"
+    )
+
+    df_f_eq = df_equip.copy()
+
+    if sel_c_eq:
+        df_f_eq = df_f_eq[df_f_eq.iloc[:,1].isin(sel_c_eq)]
+
+    if sel_s_eq:
+        df_f_eq = df_f_eq[df_f_eq.iloc[:,4].isin(sel_s_eq)]
+
+    g1_eq, g2_eq = st.columns(2)
+
+    with g1_eq:
+
+        df_m_eq = df_f_eq.melt(
+            id_vars=df_f_eq.columns[:5],
+            value_vars=cols_itens_eq,
+            var_name='Item',
+            value_name='Status'
+        )
+
+        df_chart_eq = df_m_eq.groupby(
+            ['Item','Status']
+        ).size().reset_index(name='Qtd')
+
+        st.plotly_chart(
+            px.bar(
+                df_chart_eq,
+                x='Item',
+                y='Qtd',
+                color='Status',
+                barmode='group',
+                template="plotly_dark"
+            ),
+            use_container_width=True
+        )
+
+    with g2_eq:
+
+        df_p_eq = df_m_eq[df_m_eq['Status']=='PRESERVADO']
+
+        df_p_eq = df_p_eq.groupby(
+            df_f_eq.columns[4]
+        ).size().reset_index(name='Total OK')
+
+        st.plotly_chart(
+            px.pie(
+                df_p_eq,
+                names=df_p_eq.columns[0],
+                values='Total OK',
+                title="Performance Supervisor",
+                hole=0.4,
+                template="plotly_dark"
+            ),
+            use_container_width=True
+        )
+
+    st.dataframe(df_f_eq,use_container_width=True)
+
+
+# =========================================================
+# GUIA 03 — FERRAMENTAS
+# =========================================================
+
+with abas[2]:
+
+    df_ferra = carregar_csv(URL_FERRA).iloc[:,1:]
+    df_ferra = limpar_media(df_ferra)
+
+    df_ferra = gerenciar_filtros(df_ferra,"fe")
+
+    cols_itens_fe = [c for c in df_ferra.columns[6:]]
+
+    df_ferra = padronizar_status(df_ferra,cols_itens_fe)
+
+    f1_fe, f2_fe = st.columns(2)
+
+    sel_c_fe = f1_fe.multiselect(
+        "Colaborador",
+        sorted(df_ferra.iloc[:,1].unique()),
+        key="c_fe_aba2"
+    )
+
+    sel_s_fe = f2_fe.multiselect(
+        "Supervisor",
+        sorted(df_ferra.iloc[:,4].unique()),
+        key="s_fe_aba2"
+    )
+
+    df_f_fe = df_ferra.copy()
+
+    if sel_c_fe:
+        df_f_fe = df_f_fe[df_f_fe.iloc[:,1].isin(sel_c_fe)]
+
+    if sel_s_fe:
+        df_f_fe = df_f_fe[df_f_fe.iloc[:,4].isin(sel_s_fe)]
+
+    g1_fe, g2_fe = st.columns(2)
+
+    with g1_fe:
+
+        df_m_fe = df_f_fe.melt(
+            id_vars=df_f_fe.columns[:5],
+            value_vars=cols_itens_fe,
+            var_name='Item',
+            value_name='Status'
+        )
+
+        df_chart_fe = df_m_fe.groupby(
+            ['Item','Status']
+        ).size().reset_index(name='Qtd')
+
+        st.plotly_chart(
+            px.bar(
+                df_chart_fe,
+                x='Item',
+                y='Qtd',
+                color='Status',
+                barmode='group',
+                template="plotly_dark"
+            ),
+            use_container_width=True
+        )
+
+    with g2_fe:
+
+        df_p_fe = df_m_fe[df_m_fe['Status']=='PRESERVADO']
+
+        df_p_fe = df_p_fe.groupby(
+            df_f_fe.columns[4]
+        ).size().reset_index(name='Total OK')
+
+        st.plotly_chart(
+            px.pie(
+                df_p_fe,
+                names=df_p_fe.columns[0],
+                values='Total OK',
+                title="Performance Supervisor",
+                hole=0.4,
+                template="plotly_dark"
+            ),
+            use_container_width=True
+        )
+
+    st.dataframe(df_f_fe,use_container_width=True)
+
+
+# =========================================================
+# GUIA 04 — FARDAMENTO
+# =========================================================
+
+with abas[3]:
+
+    df_fard = carregar_csv(URL_FARD).iloc[:,1:]
+    df_fard = limpar_media(df_fard)
+
+    df_fard = gerenciar_filtros(df_fard,"fard")
+
+    f_fard_colab = st.multiselect(
+        "Filtrar Colaborador",
+        sorted(df_fard.iloc[:,1].unique()),
+        key="f_fard_colab_aba3"
+    )
+
+    df_f_fard = df_fard.copy()
+
+    if f_fard_colab:
+        df_f_fard = df_f_fard[df_f_fard.iloc[:,1].isin(f_fard_colab)]
+
+    df_chart_fard = df_f_fard[df_f_fard.columns[5]].value_counts().reset_index()
+
+    df_chart_fard.columns = ['Tempo','Quantidade']
+
+    st.plotly_chart(
+        px.bar(
+            df_chart_fard,
+            x='Tempo',
+            y='Quantidade',
+            title="Tempo de Uso",
+            template="plotly_dark",
+            color='Tempo'
+        ),
+        use_container_width=True
+    )
+
+    st.dataframe(df_f_fard,use_container_width=True)
+
+
+# =========================================================
+# GUIA 05 — REPOSIÇÃO
+# =========================================================
+
+with abas[4]:
+
+    st.markdown("### 📦 Central de Reposição")
+
+    lista_reposicao = []
+
+    gatilhos = ['danificado','perdi','ruim','nao tenho','não tenho','pela metade']
+
+    def normalizar(txt):
+
+        txt = str(txt).lower().strip()
+
+        txt = (
+            txt.replace("ã","a")
+               .replace("õ","o")
+               .replace("á","a")
+               .replace("é","e")
+               .replace("í","i")
+               .replace("ó","o")
+               .replace("ú","u")
+        )
+
+        return txt
+
+    def buscar(url,categoria,idx_inicio):
+
+        try:
+
+            temp = carregar_csv(url).iloc[:,1:]
+            temp = limpar_media(temp)
+
+            data_col = temp.columns[0]
+
+            for _,linha in temp.iterrows():
+
+                data = linha[data_col]
+                colab = linha.iloc[1]
+
+                itens = temp.columns[idx_inicio:]
+
+                for it in itens:
+
+                    stt = normalizar(linha[it])
+
+                    if any(g in stt for g in gatilhos):
+
+                        lista_reposicao.append(
+                        {
+                            'Data':data,
+                            'Colaborador':colab,
+                            'Categoria':categoria,
+                            'Item':it,
+                            'Status':stt.upper()
+                        })
+
+        except:
+            pass
+
+    buscar(URL_EPI,"EPI",5)
+    buscar(URL_EQUIP,"EQUIPAMENTO",6)
+    buscar(URL_FERRA,"FERRAMENTA",6)
+
+    df_rep_total = pd.DataFrame(lista_reposicao)
+
+    if not df_rep_total.empty:
+
+        df_rep = gerenciar_filtros(df_rep_total,"reposicao")
+        
+        # Filtros Isolados para Reposição
+        fr1, fr2 = st.columns(2)
+        f_rep_colab = fr1.multiselect("Colaborador", sorted(df_rep["Colaborador"].unique()), key="f_rep_colab_aba4")
+        
+        if f_rep_colab:
+            df_rep = df_rep[df_rep["Colaborador"].isin(f_rep_colab)]
+
+        st.table(df_rep)
+
+    else:
+        st.warning("Sem itens pendentes.")
+
+
+# =========================================================
+# GUIA 06 — INTELIGÊNCIA OPERACIONAL
+# =========================================================
+
+with abas[5]:
+
+    st.markdown("## 📊 Dashboard Estratégico")
+
+    if not df_rep_total.empty:
+        
+        # Inserção dos Filtros solicitados
+        df_intel = df_rep_total.copy()
+        df_intel = gerenciar_filtros(df_intel, "intel_geral")
+        
+        fi1, fi2 = st.columns(2)
+        f_intel_colab = fi1.multiselect("Colaborador", sorted(df_intel["Colaborador"].unique()), key="f_intel_colab_aba5")
+        
+        if f_intel_colab:
+            df_intel = df_intel[df_intel["Colaborador"].isin(f_intel_colab)]
+
+        col1,col2,col3 = st.columns(3)
+
+        total = len(df_intel)
+        colaboradores = df_intel["Colaborador"].nunique()
+        itens = df_intel["Item"].nunique()
+
+        col1.metric("Ocorrências", total)
+        col2.metric("Colaboradores Impactados", colaboradores)
+        col3.metric("Itens Diferentes", itens)
+
+        st.divider()
+
+        ranking_itens = (
+            df_intel.groupby("Item")
+            .size()
+            .reset_index(name="Ocorrencias")
+            .sort_values("Ocorrencias",ascending=False)
+        )
+
+        st.subheader("Ranking — Itens que mais quebram")
+
+        st.plotly_chart(
+            px.bar(
+                ranking_itens,
+                x="Item",
+                y="Ocorrencias",
+                color="Ocorrencias",
+                template="plotly_dark"
+            ),
+            use_container_width=True
+        )
+
+        ranking_colab = (
+            df_intel.groupby("Colaborador")
+            .size()
+            .reset_index(name="Ocorrencias")
+            .sort_values("Ocorrencias",ascending=False)
+        )
+
+        st.subheader("Ranking — Colaboradores")
+
+        st.plotly_chart(
+            px.bar(
+                ranking_colab.head(10),
+                x="Colaborador",
+                y="Ocorrencias",
+                color="Ocorrencias",
+                template="plotly_dark"
+            ),
+            use_container_width=True
+        )
+
+        st.subheader("Indicador de Risco Operacional")
+
+        risco = round((total/(colaboradores+1))*10,2)
+
+        st.metric("Índice de risco", risco)
+
+        st.subheader("Previsão automática de reposição")
+
+        previsao = ranking_itens.copy()
+
+        previsao["Reposição Próximo Mês"] = (previsao["Ocorrencias"]*1.25).astype(int)
+
+        st.dataframe(previsao,use_container_width=True)
+
+    else:
+
+        st.warning("Ainda não há dados suficientes para análise estratégica.")
+
+
+# =========================================================
+# GUIA 07 — BANCO DE HORAS (CORRIGIDA)
+# =========================================================
+
+with abas[6]:
+
+    st.markdown("## ⏳ Relatório de Banco de Horas")
+
+    df_bh = carregar_csv(URL_BH)
+
+    if not df_bh.empty:
+
+        # Remove coluna vazia inicial do forms
+        df_bh = df_bh.iloc[:,1:]
+
+        # Aplica filtro de mês
+        df_bh = gerenciar_filtros(df_bh,"bh")
+
+        # Colunas da planilha
+        col_data = df_bh.columns[0]
+        col_colab = df_bh.columns[1]
+        col_saldo = df_bh.columns[2]
+        col_super = df_bh.columns[3]
+
+        # Corrige saldo
+        df_bh[col_saldo] = (
+            df_bh[col_saldo]
+            .astype(str)
+            .str.replace(",",".")
+            .str.replace("h","")
+        )
+
+        df_bh[col_saldo] = pd.to_numeric(df_bh[col_saldo],errors="coerce").fillna(0)
+
+        # =========================
+        # FILTROS
+        # =========================
+
+        f1,f2 = st.columns(2)
+
+        filtro_colab = f1.multiselect(
+            "Colaborador",
+            sorted(df_bh[col_colab].unique()),
+            key="bh_colab"
+        )
+
+        filtro_super = f2.multiselect(
+            "Supervisor",
+            sorted(df_bh[col_super].fillna("N/I").unique()),
+            key="bh_super"
+        )
+
+        df_f = df_bh.copy()
+
+        if filtro_colab:
+            df_f = df_f[df_f[col_colab].isin(filtro_colab)]
+
+        if filtro_super:
+            df_f = df_f[df_f[col_super].isin(filtro_super)]
+
+        # =========================
+        # MÉTRICAS
+        # =========================
+
+        m1,m2,m3 = st.columns(3)
+
+        m1.metric(
+            "Total de Registros",
+            len(df_f)
+        )
+
+        m2.metric(
+            "Saldo Total",
+            f"{df_f[col_saldo].sum():.2f} h"
+        )
+
+        m3.metric(
+            "Média por Registro",
+            f"{df_f[col_saldo].mean():.2f} h"
+        )
+
+        st.divider()
+
+        # =========================
+        # GRÁFICOS
+        # =========================
+
+        g1,g2 = st.columns(2)
+
+        with g1:
+
+            ranking = (
+                df_f.groupby(col_colab)[col_saldo]
+                .sum()
+                .reset_index()
+                .sort_values(col_saldo,ascending=False)
+            )
+
+            st.plotly_chart(
+                px.bar(
+                    ranking.head(15),
+                    x=col_colab,
+                    y=col_saldo,
+                    title="Ranking de Banco de Horas",
+                    color=col_saldo,
+                    template="plotly_dark"
+                ),
+                use_container_width=True
+            )
+
+        with g2:
+
+            por_supervisor = (
+                df_f.groupby(col_super)[col_saldo]
+                .sum()
+                .reset_index()
+            )
+
+            st.plotly_chart(
+                px.pie(
+                    por_supervisor,
+                    names=col_super,
+                    values=col_saldo,
+                    hole=0.4,
+                    title="Distribuição por Supervisor",
+                    template="plotly_dark"
+                ),
+                use_container_width=True
+            )
+
+        # =========================
+        # TABELA FINAL
+        # =========================
+
+        st.dataframe(df_f,use_container_width=True)
+
+    else:
+
+        st.error("Não foi possível carregar os dados do Banco de Horas.")
+
+
+st.divider()
+
+st.caption(
+f"v46 | Operacional Backbone | {datetime.now().strftime('%H:%M:%S')}"
+)
+
 
