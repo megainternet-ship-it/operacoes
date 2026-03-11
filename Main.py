@@ -1,247 +1,133 @@
-# ================================
+import streamlit as st 
+import pandas as pd
+import plotly.express as px
+from datetime import datetime, timedelta
+import io
 
+st.set_page_config(page_title="Operacional Backbone", layout="wide")
+
+# ================================
 # CORREÇÃO VISUAL E ESTILO LOGIN (CSS CUSTOMIZADO)
-
 # ================================
-
 st.markdown("""
-
 <style>
-
 /* Reset e Variáveis do seu CSS */
-
 :root {
-
   --primary: #00D9FF;
-
   --primary-foreground: #0A0E27;
-
   --background: #0A0E27;
-
   --foreground: #E0F7FF;
-
   --card: #0F1535;
-
   --card-foreground: #E0F7FF;
-
   --radius: 0.5rem;
-
   --border: #003D66;
-
 }
-
-
 
 /* Esconder Header Padrão */
-
 header {visibility: hidden;}
-
 [data-testid="stHeader"] {visibility: hidden;}
-
 [data-testid="stToolbar"] {right: 2rem;}
 
-
-
 /* Animações e Efeitos do Login */
-
 @keyframes scan-lines {
-
   0% { transform: translateY(-100%); }
-
   100% { transform: translateY(100vh); }
-
 }
-
-
 
 .stForm {
-
     background-color: var(--card) !important;
-
     border: 2px solid var(--primary) !important;
-
     border-radius: var(--radius) !important;
-
     padding: 2rem !important;
-
     box-shadow: 0 0 15px rgba(0, 217, 255, 0.2) !important;
-
 }
-
-
 
 .glow-title {
-
     color: #FFFFFF !important;
-
     text-align: center;
-
     font-family: 'Poppins', sans-serif;
-
     text-shadow: none !important;
-
     font-weight: 700;
-
 }
-
-
 
 /* Efeito de scan no fundo da tela de login */
-
 .login-bg {
-
     position: fixed;
-
     top: 0; left: 0; width: 100%; height: 100%;
-
     background: repeating-linear-gradient(0deg, rgba(0, 217, 255, 0.03) 0px, transparent 1px, transparent 2px);
-
     pointer-events: none;
-
     animation: scan-lines 10s linear infinite;
-
     z-index: 0;
-
 }
-
-
 
 /* Blocos de Região para a Nova Escala */
-
 .region-header {
-
     background-color: #003D66;
-
     color: white;
-
     padding: 10px;
-
     border-radius: 5px;
-
     margin-top: 25px;
-
     font-weight: bold;
-
     text-align: center;
-
     text-transform: uppercase;
-
     border-left: 5px solid #00D9FF;
-
 }
-
-
 
 /* Estilo da Legenda */
-
 .legenda-box {
-
     background-color: rgba(0, 217, 255, 0.05);
-
     border: 1px solid #00D9FF;
-
     padding: 12px;
-
     border-radius: 8px;
-
     margin-bottom: 15px;
-
 }
-
-
 
 .legenda-grid {
-
     display: grid;
-
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-
     gap: 8px;
-
 }
-
-
 
 .legenda-item {
-
     font-size: 0.75rem;
-
     padding: 3px 6px;
-
     border-radius: 4px;
-
 }
-
-
 
 /* AJUSTE DE FONTE E TABELA PARA 26 LINHAS - COMPACIDADE MÁXIMA */
-
 [data-testid="stDataEditor"] {
-
     font-size: 10.5px !important;
-
 }
-
-
 
 [data-testid="stDataEditor"] div {
-
     font-size: 10.5px !important;
-
 }
-
-
 
 /* Reduzir padding das células */
-
 div[data-testid="stDataEditor"] div[role="gridcell"] {
-
     padding-top: 0px !important;
-
     padding-bottom: 0px !important;
-
 }
-
-
 
 /* LÓGICA DE CORES VIA CSS PARA O EDITOR */
-
 div[data-testid="stDataEditor"] div[role="gridcell"]:has(div:contains("F")) { background-color: #FF0000 !important; color: white !important; }
-
 div[data-testid="stDataEditor"] div[role="gridcell"]:has(div:contains("AT")) { background-color: #9966FF !important; color: white !important; }
-
 div[data-testid="stDataEditor"] div[role="gridcell"]:has(div:contains("BK")) { background-color: #FF9900 !important; color: black !important; }
-
 div[data-testid="stDataEditor"] div[role="gridcell"]:has(div:contains("FO")) { background-color: #2E7D32 !important; color: white !important; }
-
 div[data-testid="stDataEditor"] div[role="gridcell"]:has(div:contains("SB")) { background-color: #FFFF00 !important; color: black !important; }
-
 div[data-testid="stDataEditor"] div[role="gridcell"]:has(div:contains("T")) { background-color: #1976D2 !important; color: white !important; }
-
 div[data-testid="stDataEditor"] div[role="gridcell"]:has(div:contains("V")) { background-color: #F06292 !important; color: black !important; }
-
 div[data-testid="stDataEditor"] div[role="gridcell"]:has(div:contains("FE")) { background-color: #00E5FF !important; color: black !important; }
-
 div[data-testid="stDataEditor"] div[role="gridcell"]:has(div:contains("DF")) { background-color: #795548 !important; color: white !important; }
 
-
-
 /* Destaque para a linha de Supervisor Interno */
-
 div[data-testid="stDataEditor"] div[role="row"]:nth-child(2) div[role="gridcell"] {
-
     font-weight: bold !important;
-
     border-bottom: 2px solid var(--primary) !important;
-
     background-color: rgba(0, 217, 255, 0.05) !important;
-
 }
 
-
-
 </style>
-
 """, unsafe_allow_html=True)
 
 
@@ -731,25 +617,125 @@ with abas[5]:
         st.warning("Ainda não há dados suficientes para análise estratégica.")
 
 
-import streamlit as st
-import pandas as pd
-from datetime import datetime
+# =========================================================
+# 📅 GUIA 07 — ESCALA DE TRABALHO (VERSÃO ORIGINAL v62)
+# =========================================================
 
-import streamlit as st
-import pandas as pd
-from datetime import datetime
+with abas[6]:
+    st.markdown("### 📅 Central de Edição: Escala Backbone")
+    
+    # 1. Obter lista de técnicos da base (Apenas nomes da coluna 1 do CSV)
+    nomes_base = sorted(BASE_CONTATOS.iloc[:,1].dropna().unique().tolist()) if not BASE_CONTATOS.empty else []
+    lista_colab_limpa = [n for n in nomes_base if not any(char.isdigit() for char in str(n)[:2])]
 
-import streamlit as st
-import pandas as pd
-from datetime import datetime
+    # 2. Legenda Visual
+    st.markdown("""
+    <div class="legenda-box">
+        <div class="legenda-grid">
+            <div class="legenda-item" style="background-color:#FF0000; color:white;"><b>F:</b> FERIADO</div>
+            <div class="legenda-item" style="background-color:#9966FF; color:white;"><b>AT:</b> LICENÇA/ATESTADO</div>
+            <div class="legenda-item" style="background-color:#FF9900; color:black;"><b>BK:</b> EQUIPE BACKUP</div>
+            <div class="legenda-item" style="background-color:#2E7D32; color:white;"><b>FO:</b> FOLGA</div>
+            <div class="legenda-item" style="background-color:#FFFF00; color:black;"><b>SB:</b> SOBREAVISO</div>
+            <div class="legenda-item" style="background-color:#1976D2; color:white;"><b>T:</b> H COMERCIAL</div>
+            <div class="legenda-item" style="background-color:#F06292; color:black;"><b>V:</b> VIAJAR EM DEMANDA</div>
+            <div class="legenda-item" style="background-color:#00E5FF; color:black;"><b>FE:</b> FÉRIAS</div>
+            <div class="legenda-item" style="background-color:#795548; color:white;"><b>DF:</b> DAY OFF</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-import streamlit as st
-import pandas as pd
-from datetime import datetime
+    # 3. Inicializar dados da sessão (Persistência de 26 linhas)
+    if "df_escala_editavel" not in st.session_state:
+        data_inicial = [
+            {"Regiao": "SOBREAVISO", "Tecnico": "INTERNO", "Auxiliar": "-", "Seg": "LUIS", "Ter": "VINICIUS", "Qua": "MARCIA", "Qui": "DANILO", "Sex": "REGINALDO", "Sab": "DANILO", "Dom": "LUIS"},
+            {"Regiao": "FLORIANO", "Tecnico": "-", "Auxiliar": "-", "Seg": "T", "Ter": "SB", "Qua": "T", "Qui": "SB", "Sex": "FO", "Sab": "T", "Dom": "SB"},
+            {"Regiao": "TERESINA", "Tecnico": "-", "Auxiliar": "-", "Seg": "T", "Ter": "T", "Qua": "SB", "Qui": "T", "Sex": "FO", "Sab": "FO", "Dom": "-"},
+        ]
+        while len(data_inicial) < 26:
+            data_inicial.append({"Regiao": "-", "Tecnico": "-", "Auxiliar": "-", "Seg": "-", "Ter": "-", "Qua": "-", "Qui": "-", "Sex": "-", "Sab": "-", "Dom": "-"})
+        st.session_state["df_escala_editavel"] = pd.DataFrame(data_inicial)
 
-import streamlit as st
-import pandas as pd
-from datetime import datetime
+    # 4. CONFIGURAÇÃO DE COLUNAS
+    config_colunas = {
+        "Regiao": st.column_config.SelectboxColumn("Região", options=["FLORIANO", "TERESINA", "AMARANTE", "PICOS", "PARNAÍBA", "PARAIBANO", "PERITORÓ", "SÃO LUÍS", "MATÕES-MA", "SOBREAVISO", "-"]),
+        "Tecnico": st.column_config.SelectboxColumn("Técnico", options=["-"] + lista_colab_limpa),
+        "Auxiliar": st.column_config.SelectboxColumn("Auxiliar", options=["-"] + lista_colab_limpa),
+        "Seg": st.column_config.TextColumn("Seg"),
+        "Ter": st.column_config.TextColumn("Ter"),
+        "Qua": st.column_config.TextColumn("Qua"),
+        "Qui": st.column_config.TextColumn("Qui"),
+        "Sex": st.column_config.TextColumn("Sex"),
+        "Sab": st.column_config.TextColumn("Sáb"),
+        "Dom": st.column_config.TextColumn("Dom"),
+    }
+
+    # 5. Editor de Dados Principal
+    df_atualizado = st.data_editor(
+        st.session_state["df_escala_editavel"],
+        column_config=config_colunas,
+        num_rows="dynamic",
+        use_container_width=True,
+        height=700,
+        key="editor_escala_final"
+    )
+    st.session_state["df_escala_editavel"] = df_atualizado
+
+    # 6. Lógica do Informativo Automático
+    st.markdown("---")
+    st.markdown("### 📝 Informativo de Sobreaviso Automático")
+
+    hoje = datetime.now()
+    dias_semana_map = {0: "Segunda-feira", 1: "Terça-feira", 2: "Quarta-feira", 3: "Quinta-feira", 4: "Sexta-feira", 5: "Sábado", 6: "Domingo"}
+    cols_semana_map = {0: "Seg", 1: "Ter", 2: "Qua", 3: "Qui", 4: "Sex", 5: "Sab", 6: "Dom"}
+    
+    dia_txt = dias_semana_map[hoje.weekday()]
+    col_dia = cols_semana_map[hoje.weekday()]
+
+    def get_tel(nome):
+        if not nome or nome == "-" or nome in ["T", "SB", "FO", "F", "AT", "BK", "V", "FE", "DF"]: return ""
+        try:
+            match = BASE_CONTATOS[BASE_CONTATOS.iloc[:,1].str.contains(str(nome), case=False, na=False)]
+            if not match.empty:
+                val = str(match.iloc[0, 2])
+                return f"({val})" if len(val) > 5 else ""
+            return ""
+        except: return ""
+
+    def extrair_equipe_dia(regiao):
+        res = []
+        df_tecnicos = df_atualizado.iloc[1:] # Pula a linha de supervisor
+        subset = df_tecnicos[(df_tecnicos['Regiao'] == regiao) & (df_tecnicos[col_dia].str.upper() == "SB")]
+        for _, r in subset.iterrows():
+            if r['Tecnico'] != "-":
+                res.append(f"{r['Tecnico']} {get_tel(r['Tecnico'])}".strip())
+            if r['Auxiliar'] != "-":
+                res.append(f"{r['Auxiliar']} {get_tel(r['Auxiliar'])}".strip())
+        return " / ".join(res) if res else "-"
+
+    supervisor_hoje = df_atualizado.iloc[0][col_dia]
+    
+    texto_informativo = f"""INFORMATIVO – Sobreaviso interno
+{dia_txt}, {hoje.strftime('%d/%m/%Y')} | 08:00h - 23:59h
+
+Responsável pelo Sobreaviso Interno:
+→ {supervisor_hoje} {get_tel(supervisor_hoje)}
+
+EQUIPE TÉCNICA EM SOBREAVISO:
+
+TERESINA: {extrair_equipe_dia('TERESINA')}
+PARNAÍBA: {extrair_equipe_dia('PARNAÍBA')}
+PERITORÓ: Francisco Carneiro 99 9 9194-6616
+          Francinaldo 99 9 9120-7148
+SÃO LUÍS: Washington JRnet +55 98 8714-5950
+PARAIBANO: {extrair_equipe_dia('PARAIBANO')}
+FLORIANO: {extrair_equipe_dia('FLORIANO')}
+AMARANTE: {extrair_equipe_dia('AMARANTE')}
+PICOS: {extrair_equipe_dia('PICOS')}
+
+Após horário de expediente do sobreaviso interno as tratativas de demandas serão feitas pelo suporte interno N1/TX/Suporte.
+"""
+    st.text_area("Copiável (Baseado na escala de hoje):", value=texto_informativo, height=450)
 
 
 
