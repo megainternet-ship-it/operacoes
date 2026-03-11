@@ -500,8 +500,11 @@ with abas[3]:
 
 with abas[4]:
     st.markdown("### 📦 Central de Reposição")
+    
     lista_reposicao = []
+    
     gatilhos = ['danificado','perdi','ruim','nao tenho','não tenho','pela metade']
+    
     def normalizar(txt):
         txt = str(txt).lower().strip()
         txt = (
@@ -514,17 +517,21 @@ with abas[4]:
                .replace("ú","u")
         )
         return txt
+
     def buscar(url,categoria,idx_inicio):
         try:
             temp = carregar_csv(url).iloc[:,1:]
             temp = limpar_media(temp)
             data_col = temp.columns[0]
+
             for _,linha in temp.iterrows():
                 data = linha[data_col]
                 colab = linha.iloc[1]
                 itens = temp.columns[idx_inicio:]
+
                 for it in itens:
                     stt = normalizar(linha[it])
+
                     if any(g in stt for g in gatilhos):
                         lista_reposicao.append(
                         {
@@ -534,19 +541,43 @@ with abas[4]:
                             'Item':it,
                             'Status':stt.upper()
                         })
+
         except:
             pass
+
+
     buscar(URL_EPI,"EPI",5)
     buscar(URL_EQUIP,"EQUIPAMENTO",6)
     buscar(URL_FERRA,"FERRAMENTA",6)
+
     df_rep_total = pd.DataFrame(lista_reposicao)
+
     if not df_rep_total.empty:
+
         df_rep = gerenciar_filtros(df_rep_total,"reposicao")
+
         fr1, fr2 = st.columns(2)
-        f_rep_colab = fr1.multiselect("Colaborador", sorted(df_rep["Colaborador"].unique()), key="f_rep_colab_aba4")
+
+        f_rep_colab = fr1.multiselect(
+            "Colaborador",
+            sorted(df_rep["Colaborador"].unique()),
+            key="f_rep_colab_aba4"
+        )
+
+        f_rep_categoria = fr2.multiselect(
+            "Categoria",
+            sorted(df_rep["Categoria"].unique()),
+            key="f_rep_categoria_aba4"
+        )
+
         if f_rep_colab:
             df_rep = df_rep[df_rep["Colaborador"].isin(f_rep_colab)]
+
+        if f_rep_categoria:
+            df_rep = df_rep[df_rep["Categoria"].isin(f_rep_categoria)]
+
         st.table(df_rep)
+
     else:
         st.warning("Sem itens pendentes.")
 
@@ -736,6 +767,7 @@ PICOS: {extrair_equipe_dia('PICOS')}
 Após horário de expediente do sobreaviso interno as tratativas de demandas serão feitas pelo suporte interno N1/TX/Suporte.
 """
     st.text_area("Copiável (Baseado na escala de hoje):", value=texto_informativo, height=450)
+
 
 
 
