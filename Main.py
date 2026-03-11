@@ -154,7 +154,7 @@ if "autenticado" not in st.session_state:
 def tela_login():
     st.markdown('<div class="login-bg"></div>', unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns([1,2,1])
+    col1, col2, col3 = st.columns()
     with col2:
         st.markdown('<h1 class="glow-title">🔒 OPERACIONAL BACKBONE</h1>', unsafe_allow_html=True)
         st.write("") 
@@ -219,12 +219,12 @@ def padronizar_status(df, colunas):
 
 
 def gerenciar_filtros(df, key_suffix):
-    col_data = df.columns[0]
+    col_data = df.columns
     df[col_data] = pd.to_datetime(df[col_data], dayfirst=True, errors='coerce')
     df = df.dropna(subset=[col_data])
     df['Mes_Ano_Ref'] = df[col_data].dt.strftime('%m/%Y')
     meses_disponiveis = sorted(df['Mes_Ano_Ref'].unique(), reverse=True)
-    c1, c2 = st.columns([3,1])
+    c1, c2 = st.columns()
     with c2:
         btn_limpar = st.button("🧹 Limpar filtro", key=f"btn_limpar_{key_suffix}")
     if btn_limpar:
@@ -265,7 +265,7 @@ abas = st.tabs([
 # GUIA 01 — EPI
 # =========================================================
 
-with abas[0]:
+with abas:
     df_epi = carregar_csv(URL_EPI).iloc[:,1:]
     df_epi = limpar_media(df_epi)
     df_epi = gerenciar_filtros(df_epi,"epi")
@@ -306,18 +306,18 @@ with abas[0]:
         )
     with cg2:
         df_perf = df_f_epi.melt(
-            id_vars=[df_f_epi.columns[3]],
+            id_vars=[df_f_epi.columns],
             value_vars=cols_itens_epi,
             value_name='Status'
         )
         df_perf = df_perf[df_perf['Status']=='PRESERVADO']
         df_perf = df_perf.groupby(
-            df_f_epi.columns[3]
+            df_f_epi.columns
         ).size().reset_index(name='Qtd OK')
         st.plotly_chart(
             px.pie(
                 df_perf,
-                names=df_perf.columns[0],
+                names=df_perf.columns,
                 values='Qtd OK',
                 title="Performance Supervisor",
                 hole=0.4,
@@ -332,7 +332,7 @@ with abas[0]:
 # GUIA 02 — EQUIPAMENTOS
 # =========================================================
 
-with abas[1]:
+with abas:
     df_equip = carregar_csv(URL_EQUIP).iloc[:,1:]
     df_equip = limpar_media(df_equip)
     df_equip = gerenciar_filtros(df_equip,"eq")
@@ -379,12 +379,12 @@ with abas[1]:
     with g2_eq:
         df_p_eq = df_m_eq[df_m_eq['Status']=='PRESERVADO']
         df_p_eq = df_p_eq.groupby(
-            df_f_eq.columns[4]
+            df_f_eq.columns
         ).size().reset_index(name='Total OK')
         st.plotly_chart(
             px.pie(
                 df_p_eq,
-                names=df_p_eq.columns[0],
+                names=df_p_eq.columns,
                 values='Total OK',
                 title="Performance Supervisor",
                 hole=0.4,
@@ -399,7 +399,7 @@ with abas[1]:
 # GUIA 03 — FERRAMENTAS
 # =========================================================
 
-with abas[2]:
+with abas:
     df_ferra = carregar_csv(URL_FERRA).iloc[:,1:]
     df_ferra = limpar_media(df_ferra)
     df_ferra = gerenciar_filtros(df_ferra,"fe")
@@ -446,12 +446,12 @@ with abas[2]:
     with g2_fe:
         df_p_fe = df_m_fe[df_m_fe['Status']=='PRESERVADO']
         df_p_fe = df_p_fe.groupby(
-            df_f_fe.columns[4]
+            df_f_fe.columns
         ).size().reset_index(name='Total OK')
         st.plotly_chart(
             px.pie(
                 df_p_fe,
-                names=df_p_fe.columns[0],
+                names=df_p_fe.columns,
                 values='Total OK',
                 title="Performance Supervisor",
                 hole=0.4,
@@ -466,7 +466,7 @@ with abas[2]:
 # GUIA 04 — FARDAMENTO
 # =========================================================
 
-with abas[3]:
+with abas:
     df_fard = carregar_csv(URL_FARD).iloc[:,1:]
     df_fard = limpar_media(df_fard)
     df_fard = gerenciar_filtros(df_fard,"fard")
@@ -478,7 +478,7 @@ with abas[3]:
     df_f_fard = df_fard.copy()
     if f_fard_colab:
         df_f_fard = df_f_fard[df_f_fard.iloc[:,1].isin(f_fard_colab)]
-    df_chart_fard = df_f_fard[df_f_fard.columns[5]].value_counts().reset_index()
+    df_chart_fard = df_f_fard[df_f_fard.columns].value_counts().reset_index()
     df_chart_fard.columns = ['Tempo','Quantidade']
     st.plotly_chart(
         px.bar(
@@ -498,7 +498,7 @@ with abas[3]:
 # GUIA 05 — REPOSIÇÃO
 # =========================================================
 
-with abas[4]:
+with abas:
     st.markdown("### 📦 Central de Reposição")
     lista_reposicao = []
     gatilhos = ['danificado','perdi','ruim','nao tenho','não tenho','pela metade']
@@ -518,10 +518,10 @@ with abas[4]:
         try:
             temp = carregar_csv(url).iloc[:,1:]
             temp = limpar_media(temp)
-            data_col = temp.columns[0]
+            data_col = temp.columns
             for _,linha in temp.iterrows():
                 data = linha[data_col]
-                colab = linha.iloc[1]
+                colab = linha.iloc
                 itens = temp.columns[idx_inicio:]
                 for it in itens:
                     stt = normalizar(linha[it])
@@ -544,8 +544,14 @@ with abas[4]:
         df_rep = gerenciar_filtros(df_rep_total,"reposicao")
         fr1, fr2 = st.columns(2)
         f_rep_colab = fr1.multiselect("Colaborador", sorted(df_rep["Colaborador"].unique()), key="f_rep_colab_aba4")
+        # --- NOVO FILTRO DE CATEGORIA ---
+        f_rep_cat = fr2.multiselect("Categoria", sorted(df_rep["Categoria"].unique()), key="f_rep_cat_aba4")
+        
         if f_rep_colab:
             df_rep = df_rep[df_rep["Colaborador"].isin(f_rep_colab)]
+        if f_rep_cat:
+            df_rep = df_rep[df_rep["Categoria"].isin(f_rep_cat)]
+        
         st.table(df_rep)
     else:
         st.warning("Sem itens pendentes.")
@@ -555,7 +561,7 @@ with abas[4]:
 # GUIA 06 — INTELIGÊNCIA OPERACIONAL
 # =========================================================
 
-with abas[5]:
+with abas:
     st.markdown("## 📊 Dashboard Estratégico")
     if not df_rep_total.empty:
         df_intel = df_rep_total.copy()
@@ -621,7 +627,7 @@ with abas[5]:
 # 📅 GUIA 07 — ESCALA DE TRABALHO (VERSÃO ORIGINAL v62)
 # =========================================================
 
-with abas[6]:
+with abas:
     st.markdown("### 📅 Central de Edição: Escala Backbone")
     
     # 1. Obter lista de técnicos da base (Apenas nomes da coluna 1 do CSV)
@@ -697,7 +703,7 @@ with abas[6]:
         try:
             match = BASE_CONTATOS[BASE_CONTATOS.iloc[:,1].str.contains(str(nome), case=False, na=False)]
             if not match.empty:
-                val = str(match.iloc[0, 2])
+                val = str(match.iloc)
                 return f"({val})" if len(val) > 5 else ""
             return ""
         except: return ""
@@ -713,7 +719,7 @@ with abas[6]:
                 res.append(f"{r['Auxiliar']} {get_tel(r['Auxiliar'])}".strip())
         return " / ".join(res) if res else "-"
 
-    supervisor_hoje = df_atualizado.iloc[0][col_dia]
+    supervisor_hoje = df_atualizado.iloc[col_dia]
     
     texto_informativo = f"""INFORMATIVO – Sobreaviso interno
 {dia_txt}, {hoje.strftime('%d/%m/%Y')} | 08:00h - 23:59h
@@ -736,6 +742,7 @@ PICOS: {extrair_equipe_dia('PICOS')}
 Após horário de expediente do sobreaviso interno as tratativas de demandas serão feitas pelo suporte interno N1/TX/Suporte.
 """
     st.text_area("Copiável (Baseado na escala de hoje):", value=texto_informativo, height=450)
+
 
 
 
