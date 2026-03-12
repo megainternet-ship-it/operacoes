@@ -257,7 +257,7 @@ abas = st.tabs([
     "👕 FARDAMENTO",
     "📦 REPOSIÇÃO",
     "📊 INTELIGÊNCIA OPERACIONAL",
-    "📅 ESCALA DE TRABALHO"
+    "📝 GERÊNCIA DE OS"
 ])
 
 
@@ -647,126 +647,166 @@ with abas[5]:
     else:
         st.warning("Ainda não há dados suficientes para análise estratégica.")
 
-
 # =========================================================
-# 📅 GUIA 07 — ESCALA DE TRABALHO (VERSÃO ORIGINAL v62)
+# GUIA 07 — GERÊNCIA DE OS (ESTRUTURA SAAS DASHBOARD)
 # =========================================================
 
 with abas[6]:
-    st.markdown("### 📅 Central de Edição: Escala Backbone")
-    
-    # 1. Obter lista de técnicos da base (Apenas nomes da coluna 1 do CSV)
-    nomes_base = sorted(BASE_CONTATOS.iloc[:,1].dropna().unique().tolist()) if not BASE_CONTATOS.empty else []
-    lista_colab_limpa = [n for n in nomes_base if not any(char.isdigit() for char in str(n)[:2])]
-
-    # 2. Legenda Visual
+    # --- 1. ESTILO ESPECÍFICO PARA OS CARDS ---
     st.markdown("""
-    <div class="legenda-box">
-        <div class="legenda-grid">
-            <div class="legenda-item" style="background-color:#FF0000; color:white;"><b>F:</b> FERIADO</div>
-            <div class="legenda-item" style="background-color:#9966FF; color:white;"><b>AT:</b> LICENÇA/ATESTADO</div>
-            <div class="legenda-item" style="background-color:#FF9900; color:black;"><b>BK:</b> EQUIPE BACKUP</div>
-            <div class="legenda-item" style="background-color:#2E7D32; color:white;"><b>FO:</b> FOLGA</div>
-            <div class="legenda-item" style="background-color:#FFFF00; color:black;"><b>SB:</b> SOBREAVISO</div>
-            <div class="legenda-item" style="background-color:#1976D2; color:white;"><b>T:</b> H COMERCIAL</div>
-            <div class="legenda-item" style="background-color:#F06292; color:black;"><b>V:</b> VIAJAR EM DEMANDA</div>
-            <div class="legenda-item" style="background-color:#00E5FF; color:black;"><b>FE:</b> FÉRIAS</div>
-            <div class="legenda-item" style="background-color:#795548; color:white;"><b>DF:</b> DAY OFF</div>
-        </div>
-    </div>
+        <style>
+        .metric-card {
+            background-color: #0F1535;
+            border: 1px solid #1E293B;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #00D9FF;
+        }
+        .metric-value { font-size: 28px; font-weight: bold; color: white; }
+        .metric-label { font-size: 12px; color: #94A3B8; text-transform: uppercase; }
+        </style>
     """, unsafe_allow_html=True)
 
-    # 3. Inicializar dados da sessão (Persistência de 26 linhas)
-    if "df_escala_editavel" not in st.session_state:
-        data_inicial = [
-            {"Regiao": "SOBREAVISO", "Tecnico": "INTERNO", "Auxiliar": "-", "Seg": "LUIS", "Ter": "VINICIUS", "Qua": "MARCIA", "Qui": "DANILO", "Sex": "REGINALDO", "Sab": "DANILO", "Dom": "LUIS"},
-            {"Regiao": "FLORIANO", "Tecnico": "-", "Auxiliar": "-", "Seg": "T", "Ter": "SB", "Qua": "T", "Qui": "SB", "Sex": "FO", "Sab": "T", "Dom": "SB"},
-            {"Regiao": "TERESINA", "Tecnico": "-", "Auxiliar": "-", "Seg": "T", "Ter": "T", "Qua": "SB", "Qui": "T", "Sex": "FO", "Sab": "FO", "Dom": "-"},
-        ]
-        while len(data_inicial) < 26:
-            data_inicial.append({"Regiao": "-", "Tecnico": "-", "Auxiliar": "-", "Seg": "-", "Ter": "-", "Qua": "-", "Qui": "-", "Sex": "-", "Sab": "-", "Dom": "-"})
-        st.session_state["df_escala_editavel"] = pd.DataFrame(data_inicial)
+    # Inicialização de variáveis de estado
+    if "db_os" not in st.session_state:
+        st.session_state["db_os"] = pd.DataFrame(columns=[
+            "Número OS", "Trecho / Cliente", "Descrição", "Líder Responsável", 
+            "Previsão", "Status", "Última Atualização", "Intervalo Alerta"
+        ])
 
-    # 4. CONFIGURAÇÃO DE COLUNAS
-    config_colunas = {
-        "Regiao": st.column_config.SelectboxColumn("Região", options=["FLORIANO", "TERESINA", "AMARANTE", "PICOS", "PARNAÍBA", "PARAIBANO", "PERITORÓ", "SÃO LUÍS", "MATÕES-MA", "SOBREAVISO", "-"]),
-        "Tecnico": st.column_config.SelectboxColumn("Técnico", options=["-"] + lista_colab_limpa),
-        "Auxiliar": st.column_config.SelectboxColumn("Auxiliar", options=["-"] + lista_colab_limpa),
-        "Seg": st.column_config.TextColumn("Seg"),
-        "Ter": st.column_config.TextColumn("Ter"),
-        "Qua": st.column_config.TextColumn("Qua"),
-        "Qui": st.column_config.TextColumn("Qui"),
-        "Sex": st.column_config.TextColumn("Sex"),
-        "Sab": st.column_config.TextColumn("Sáb"),
-        "Dom": st.column_config.TextColumn("Dom"),
-    }
+    # --- 2. CABEÇALHO E BOTÕES DE AÇÃO ---
+    c_tit, c_btns = st.columns([1, 1.5])
+    with c_tit:
+        st.markdown("### Gerência de Ordens de Serviço")
+    
+    with c_btns:
+        col_b1, col_b2, col_b3 = st.columns(3)
+        btn_nova_os = col_b1.button("➕ Nova OS", use_container_width=True, type="primary")
+        btn_relatorio = col_b2.button("📑 Relatório de Plantão", use_container_width=True)
+        if col_b3.button("🗑️ Zerar Relatório", use_container_width=True):
+            st.session_state["db_os"] = pd.DataFrame(columns=st.session_state["db_os"].columns)
+            st.rerun()
 
-    # 5. Editor de Dados Principal
-    df_atualizado = st.data_editor(
-        st.session_state["df_escala_editavel"],
-        column_config=config_colunas,
-        num_rows="dynamic",
+    # --- 3. CARDS DE INDICADORES ---
+    df_indicadores = st.session_state["db_os"]
+    total_ativas = len(df_indicadores[df_indicadores["Status"] != "Concluída"])
+    concluidas = len(df_indicadores[df_indicadores["Status"] == "Concluída"])
+    
+    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+    kpi1.markdown(f'<div class="metric-card"><p class="metric-label">OS ATIVAS</p><p class="metric-value">{total_ativas}</p></div>', unsafe_allow_html=True)
+    kpi2.markdown(f'<div class="metric-card" style="border-left-color: #EF4444;"><p class="metric-label">OS ATRASADAS</p><p class="metric-value">0</p></div>', unsafe_allow_html=True)
+    kpi3.markdown(f'<div class="metric-card" style="border-left-color: #10B981;"><p class="metric-label">CONCLUÍDAS HOJE</p><p class="metric-value">{concluidas}</p></div>', unsafe_allow_html=True)
+    kpi4.markdown(f'<div class="metric-card" style="border-left-color: #F59E0B;"><p class="metric-label">SEM ATUALIZAÇÃO +24H</p><p class="metric-value">0</p></div>', unsafe_allow_html=True)
+
+    st.write("")
+
+    # --- 4. ÁREA DE FILTROS ---
+    with st.container():
+        f_col1, f_col2, f_col3, f_col4 = st.columns([1, 1, 1, 2])
+        filtro_st = f_col1.selectbox("Status:", ["Todos", "Aberta", "Em andamento", "Aguardando", "Concluída"])
+        filtro_li = f_col2.selectbox("Líder:", ["Todos", "Danilo Italiano", "Luis Fernandes", "Marcia Jordana", "Reginaldo Lopes", "Vinicius Araújo"])
+        f_col3.write("") # Espaçador
+        check_att = f_col3.checkbox("Sem atualização +24h")
+
+    # --- 5. MODAL DE CADASTRO (SIMULADO COM CALENDÁRIO) ---
+    if btn_nova_os:
+        st.session_state["modal_aberto"] = True
+
+    if st.session_state.get("modal_aberto", False):
+        with st.expander("📝 Formulário: Nova Ordem de Serviço", expanded=True):
+            with st.form("nova_os_form"):
+                c1, c2 = st.columns(2)
+                num = c1.text_input("Número da OS", placeholder="Ex: OS-001")
+                trecho_c = c2.text_input("Trecho / Cliente", placeholder="Ex: Rua A - Cliente X")
+                
+                obs = st.text_area("Descrição / Observações", placeholder="Descreva o trabalho a ser realizado")
+                
+                c3, c4 = st.columns(2)
+                lider_os = c3.selectbox("Líder Responsável", ["Selecione um líder", "Danilo Italiano", "Luis Fernandes", "Marcia Jordana", "Reginaldo Lopes", "Vinicius Araújo"])
+                status_os = c4.selectbox("Status", ["Aberta", "Em andamento", "Aguardando", "Concluída"])
+                
+                c5, c6 = st.columns(2)
+                alerta = c5.number_input("⏰ Intervalo de Alerta (minutos)", value=30)
+                # CALENDÁRIO PARA PREVISÃO
+                previsao_dt = c6.date_input("Previsão de Atendimento (Data)", value=datetime.now())
+                previsao_hr = c6.time_input("Previsão de Atendimento (Hora)")
+                
+                # CALENDÁRIO PARA HORÁRIO DA SITUAÇÃO (Como na imagem)
+                c7, c8 = st.columns([2, 1])
+                data_sit = c7.date_input("Horário da Situação", value=datetime.now())
+                hora_sit = c7.time_input("Hora da Situação", label_visibility="collapsed")
+                # Botão "Usar Agora" é simulado pelo valor padrão do datetime.now()
+                
+                st.markdown("---")
+                f_btn1, f_btn2 = st.columns([1, 5])
+                with f_btn1:
+                    cancelar = st.form_submit_button("Cancelar")
+                with f_btn2:
+                    salvar = st.form_submit_button("Salvar OS", type="primary")
+
+                if salvar:
+                    if num and trecho_c and lider_os != "Selecione um líder":
+                        # Junta data e hora para salvar na tabela
+                        dt_previsao = f"{previsao_dt.strftime('%d/%m/%Y')} {previsao_hr.strftime('%H:%M')}"
+                        dt_situacao = f"{data_sit.strftime('%d/%m/%Y')} {hora_sit.strftime('%H:%M')}"
+                        
+                        nova_linha = {
+                            "Número OS": num, 
+                            "Trecho / Cliente": trecho_c, 
+                            "Descrição": obs,
+                            "Líder Responsável": lider_os, 
+                            "Previsão": dt_previsao, 
+                            "Status": status_os,
+                            "Última Atualização": dt_situacao, 
+                            "Intervalo Alerta": alerta
+                        }
+                        st.session_state["db_os"] = pd.concat([st.session_state["db_os"], pd.DataFrame([nova_linha])], ignore_index=True)
+                        st.session_state["modal_aberto"] = False
+                        st.toast("OS Salva com Sucesso!", icon="✅")
+                        st.rerun()
+                    else:
+                        st.error("Por favor, preencha os campos obrigatórios (Número, Trecho e Líder).")
+                
+                if cancelar:
+                    st.session_state["modal_aberto"] = False
+                    st.rerun()
+
+    # --- 6. RELATÓRIO TEXTUAL (ESTRUTURA SOLICITADA) ---
+    if btn_relatorio:
+        st.markdown("#### 📋 Relatório para Cópia")
+        data_h = datetime.now().strftime("%d/%m/%Y")
+        data_a = (datetime.now() + timedelta(days=1)).strftime("%d/%m/%Y")
+        
+        rel_texto = f"Bom dia!\n\nSeguem os dados do plantão / sobreaviso {data_h} a {data_a}\n"
+        rel_texto += "="*80 + "\n"
+        
+        if st.session_state["db_os"].empty:
+            rel_texto += "\nNenhuma OS registrada neste período.\n"
+        else:
+            for _, r in st.session_state["db_os"].iterrows():
+                rel_texto += f"\n📦 OS: {r['Número OS']} | {r['Trecho / Cliente']}\n"
+                rel_texto += f"   Status: {r['Status']} | Líder: {r['Líder Responsável']}\n"
+                rel_texto += f"   Descrição: {r['Descrição']}\n"
+        
+        rel_texto += "\n" + "="*80
+        st.code(rel_texto, language="text")
+
+    # --- 7. TABELA DE DADOS (DATA EDITOR) ---
+    df_view = st.session_state["db_os"].copy()
+    if filtro_st != "Todos": df_view = df_view[df_view["Status"] == filtro_st]
+    if filtro_li != "Todos": df_view = df_view[df_view["Líder Responsável"] == filtro_li]
+
+    st.data_editor(
+        df_view,
+        column_config={
+            "Status": st.column_config.SelectboxColumn(options=["Aberta", "Em andamento", "Aguardando", "Concluída"]),
+            "Líder Responsável": st.column_config.SelectboxColumn(options=["Danilo Italiano", "Luis Fernandes", "Marcia Jordana", "Reginaldo Lopes", "Vinicius Araújo"])
+        },
         use_container_width=True,
-        height=700,
-        key="editor_escala_final"
+        hide_index=True,
+        key="editor_gerencia_final"
     )
-    st.session_state["df_escala_editavel"] = df_atualizado
 
-    # 6. Lógica do Informativo Automático
-    st.markdown("---")
-    st.markdown("### 📝 Informativo de Sobreaviso Automático")
-
-    hoje = datetime.now()
-    dias_semana_map = {0: "Segunda-feira", 1: "Terça-feira", 2: "Quarta-feira", 3: "Quinta-feira", 4: "Sexta-feira", 5: "Sábado", 6: "Domingo"}
-    cols_semana_map = {0: "Seg", 1: "Ter", 2: "Qua", 3: "Qui", 4: "Sex", 5: "Sab", 6: "Dom"}
-    
-    dia_txt = dias_semana_map[hoje.weekday()]
-    col_dia = cols_semana_map[hoje.weekday()]
-
-    def get_tel(nome):
-        if not nome or nome == "-" or nome in ["T", "SB", "FO", "F", "AT", "BK", "V", "FE", "DF"]: return ""
-        try:
-            match = BASE_CONTATOS[BASE_CONTATOS.iloc[:,1].str.contains(str(nome), case=False, na=False)]
-            if not match.empty:
-                val = str(match.iloc[0, 2])
-                return f"({val})" if len(val) > 5 else ""
-            return ""
-        except: return ""
-
-    def extrair_equipe_dia(regiao):
-        res = []
-        df_tecnicos = df_atualizado.iloc[1:] # Pula a linha de supervisor
-        subset = df_tecnicos[(df_tecnicos['Regiao'] == regiao) & (df_tecnicos[col_dia].str.upper() == "SB")]
-        for _, r in subset.iterrows():
-            if r['Tecnico'] != "-":
-                res.append(f"{r['Tecnico']} {get_tel(r['Tecnico'])}".strip())
-            if r['Auxiliar'] != "-":
-                res.append(f"{r['Auxiliar']} {get_tel(r['Auxiliar'])}".strip())
-        return " / ".join(res) if res else "-"
-
-    supervisor_hoje = df_atualizado.iloc[0][col_dia]
-    
-    texto_informativo = f"""INFORMATIVO – Sobreaviso interno
-{dia_txt}, {hoje.strftime('%d/%m/%Y')} | 08:00h - 23:59h
-
-Responsável pelo Sobreaviso Interno:
-→ {supervisor_hoje} {get_tel(supervisor_hoje)}
-
-EQUIPE TÉCNICA EM SOBREAVISO:
-
-TERESINA: {extrair_equipe_dia('TERESINA')}
-PARNAÍBA: {extrair_equipe_dia('PARNAÍBA')}
-PERITORÓ: Francisco Carneiro 99 9 9194-6616
-          Francinaldo 99 9 9120-7148
-SÃO LUÍS: Washington JRnet +55 98 8714-5950
-PARAIBANO: {extrair_equipe_dia('PARAIBANO')}
-FLORIANO: {extrair_equipe_dia('FLORIANO')}
-AMARANTE: {extrair_equipe_dia('AMARANTE')}
-PICOS: {extrair_equipe_dia('PICOS')}
-
-Após horário de expediente do sobreaviso interno as tratativas de demandas serão feitas pelo suporte interno N1/TX/Suporte.
-"""
-    st.text_area("Copiável (Baseado na escala de hoje):", value=texto_informativo, height=450)
 
 
 
